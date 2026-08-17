@@ -1,3 +1,11 @@
+      - name: Restore persistent debug signing key
+        env:
+          WOTLK_DEBUG_KEYSTORE_B64: ${{ secrets.WOTLK_DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p "$HOME/.android"
+          printf '%s' "$WOTLK_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+
 name: Build WotLK Fold APK
 
 on:
