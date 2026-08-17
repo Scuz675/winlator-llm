@@ -1,11 +1,3 @@
-      - name: Restore persistent debug signing key
-        env:
-          WOTLK_DEBUG_KEYSTORE_B64: ${{ secrets.WOTLK_DEBUG_KEYSTORE_B64 }}
-        run: |
-          mkdir -p "$HOME/.android"
-          printf '%s' "$WOTLK_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
-
 name: Build WotLK Fold APK
 
 on:
@@ -36,18 +28,13 @@ jobs:
             | sha256sum -c -
 
           mkdir -p /tmp/frontmage-apk
-
           unzip -q /tmp/frontmage.apk 'assets/*' -d /tmp/frontmage-apk
 
           cp -a /tmp/frontmage-apk/assets/. app/src/main/assets/
 
-          echo "Checking critical first-run assets..."
-
+          echo "Checking critical runtime assets..."
           test -s app/src/main/assets/imagefs.txz
           test -s app/src/main/assets/preinstall/proton-10-arm64ec.wcp.xz
-
-          ls -lh app/src/main/assets/imagefs.txz
-          ls -lh app/src/main/assets/preinstall/proton-10-arm64ec.wcp.xz
 
       - name: Set up Java 17 for Android SDK
         uses: actions/setup-java@v5
@@ -75,6 +62,21 @@ jobs:
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
+
+      - name: Restore persistent debug signing key
+        env:
+          WOTLK_DEBUG_KEYSTORE_B64: ${{ secrets.WOTLK_DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p "$HOME/.android"
+          printf '%s' "$WOTLK_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+
+      - name: Verify signing key
+        run: |
+          keytool -list \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
