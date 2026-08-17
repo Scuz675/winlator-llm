@@ -47,7 +47,7 @@
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
-            android:screenOrientation="sensorLandscape" />
+            android:screenOrientation="sensorPortrait" />
 
         <activity
             android:name="com.winlator.XrActivity"
