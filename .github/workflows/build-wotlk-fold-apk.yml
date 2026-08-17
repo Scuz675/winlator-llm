@@ -68,7 +68,25 @@ jobs:
           WOTLK_DEBUG_KEYSTORE_B64: ${{ secrets.WOTLK_DEBUG_KEYSTORE_B64 }}
         run: |
           mkdir -p "$HOME/.android"
-          printf '%s' "$WOTLK_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+
+          python3 - <<'PY'
+          import os
+          import base64
+          from pathlib import Path
+
+          encoded = os.environ["WOTLK_DEBUG_KEYSTORE_B64"]
+
+          # Remove spaces/newlines introduced by mobile copy/paste.
+          encoded = "".join(encoded.split())
+
+          decoded = base64.b64decode(encoded, validate=True)
+
+          path = Path.home() / ".android" / "debug.keystore"
+          path.write_bytes(decoded)
+
+          print(f"Restored signing key: {len(decoded)} bytes")
+          PY
+
           chmod 600 "$HOME/.android/debug.keystore"
 
       - name: Verify signing key
