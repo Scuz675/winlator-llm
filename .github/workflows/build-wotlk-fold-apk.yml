@@ -18,12 +18,28 @@ jobs:
           fetch-depth: 1
           submodules: recursive
 
-      - name: Fetch FrontMage runtime assets
+      - name: Import known-good FrontMage runtime
         run: |
-          git lfs install --local
-          git remote add upstream https://github.com/FrontMage/winlator-llm.git
-          git lfs fetch upstream
-          git lfs checkout
+          curl -fL --retry 3 \
+            -o /tmp/frontmage.apk \
+            https://github.com/FrontMage/winlator-llm/releases/download/llm-apk-20260216-144633/app-debug.apk
+
+          echo "01d364cafc77bb919a89668ac20618a108763c4e46ef3a81a104a4dc4bf98b2e  /tmp/frontmage.apk" \
+            | sha256sum -c -
+
+          mkdir -p /tmp/frontmage-apk
+
+          unzip -q /tmp/frontmage.apk 'assets/*' -d /tmp/frontmage-apk
+
+          cp -a /tmp/frontmage-apk/assets/. app/src/main/assets/
+
+          echo "Checking critical first-run assets..."
+
+          test -s app/src/main/assets/imagefs.txz
+          test -s app/src/main/assets/preinstall/proton-10-arm64ec.wcp.xz
+
+          ls -lh app/src/main/assets/imagefs.txz
+          ls -lh app/src/main/assets/preinstall/proton-10-arm64ec.wcp.xz
 
       - name: Set up Java 17 for Android SDK
         uses: actions/setup-java@v5
