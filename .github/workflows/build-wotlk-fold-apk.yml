@@ -21,7 +21,7 @@ jobs:
         run: |
           git lfs install --local
           git remote add upstream https://github.com/FrontMage/winlator-llm.git
-          git lfs fetch upstream main
+          git lfs fetch upstream
           git lfs checkout
 
       - name: Set up Java 17 for Android SDK
