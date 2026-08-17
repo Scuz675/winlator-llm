@@ -16,6 +16,7 @@ jobs:
         with:
           lfs: false
           fetch-depth: 1
+          submodules: recursive
 
       - name: Fetch FrontMage runtime assets
         run: |
