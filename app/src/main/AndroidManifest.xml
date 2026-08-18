@@ -47,7 +47,7 @@
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
-            android:screenOrientation="sensorPortrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name="com.winlator.XrActivity"
@@ -68,7 +68,7 @@
         <activity android:name="com.winlator.ControlsEditorActivity"
             android:exported="false"
             android:theme="@style/AppThemeFullscreen"
-            android:screenOrientation="sensorPortrait" />
+            android:screenOrientation="sensor" />
 
         <activity android:name="com.winlator.ExternalControllerBindingsActivity"
             android:theme="@style/AppTheme"
