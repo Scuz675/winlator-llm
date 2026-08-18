@@ -340,12 +340,22 @@ public class InputControlsView extends View {
                     }
                     break;
                 }
-                case MotionEvent.ACTION_UP: {
-                    if (selectedElement != null && profile != null) profile.save();
-                    if (moveCursor) cursor.set((int)Mathf.roundTo(event.getX(), snappingSize), (int)Mathf.roundTo(event.getY(), snappingSize));
-                    invalidate();
-                    break;
-                }
+case MotionEvent.ACTION_UP:
+case MotionEvent.ACTION_CANCEL: {
+    if (selectedElement != null && profile != null) {
+        profile.save();
+    }
+
+    if (event.getAction() == MotionEvent.ACTION_UP && moveCursor) {
+        cursor.set(
+            (int)Mathf.roundTo(event.getX(), snappingSize),
+            (int)Mathf.roundTo(event.getY(), snappingSize)
+        );
+    }
+
+    invalidate();
+    break;
+}
             }
         }
 
