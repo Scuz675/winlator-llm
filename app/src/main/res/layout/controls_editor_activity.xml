@@ -40,6 +40,12 @@
 
         <View style="@style/VerticalLine" />
 
+<ImageButton
+    android:id="@+id/BTSave"
+    style="@style/ToolButton"
+    android:src="@android:drawable/ic_menu_save"
+    android:contentDescription="@string/save" />
+
         <ImageButton
             android:id="@+id/BTAddElement"
             style="@style/ToolButton"
