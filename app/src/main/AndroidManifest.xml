@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.winlator">
+
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
+
     <uses-feature
         android:name="android.hardware.vr.headtracking"
         android:required="false" />
+
     <uses-feature
         android:name="com.oculus.feature.PASSTHROUGH"
         android:required="false" />
+
     <uses-feature
         android:name="oculus.software.handtracking"
         android:required="false" />
+
     <uses-feature
         android:name="oculus.software.overlay_keyboard"
         android:required="false" />
@@ -36,17 +41,20 @@
             android:exported="true"
             android:screenOrientation="sensor"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
         </activity>
 
-<activity android:name="com.winlator.ControlsEditorActivity"
-    android:exported="false"
-    android:theme="@style/AppThemeFullscreen"
-    android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
-    android:screenOrientation="sensorPortrait" />
+        <activity android:name="com.winlator.XServerDisplayActivity"
+            android:exported="false"
+            android:theme="@style/AppThemeFullscreen"
+            android:launchMode="singleTask"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:screenOrientation="sensorPortrait" />
 
         <activity
             android:name="com.winlator.XrActivity"
@@ -57,22 +65,26 @@
             android:screenOrientation="landscape"
             android:process=":vr_process"
             android:theme="@style/AppThemeFullscreen">
+
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="com.oculus.intent.category.VR" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
-<activity android:name="com.winlator.ControlsEditorActivity"
-    android:exported="false"
-    android:theme="@style/AppThemeFullscreen"
-    android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
-    android:screenOrientation="sensorPortrait" />
+        <activity android:name="com.winlator.ControlsEditorActivity"
+            android:exported="false"
+            android:theme="@style/AppThemeFullscreen"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:screenOrientation="sensorPortrait" />
 
         <activity android:name="com.winlator.ExternalControllerBindingsActivity"
             android:theme="@style/AppTheme"
             android:exported="false"
             android:screenOrientation="sensor" />
+
     </application>
+
 </manifest>
