@@ -58,6 +58,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         container.findViewById(R.id.BTAddElement).setOnClickListener(this);
         container.findViewById(R.id.BTRemoveElement).setOnClickListener(this);
         container.findViewById(R.id.BTElementSettings).setOnClickListener(this);
+        container.findViewById(R.id.BTSave).setOnClickListener(this);
     }
 
     @Override
@@ -69,28 +70,40 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         super.onPause();
     }
 
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.BTAddElement:
-                if (!inputControlsView.addElement()) {
-                    AppUtils.showToast(this, R.string.no_profile_selected);
-                }
-                break;
-            case R.id.BTRemoveElement:
-                if (!inputControlsView.removeElement()) {
-                    AppUtils.showToast(this, R.string.no_control_element_selected);
-                }
-                break;
-            case R.id.BTElementSettings:
-                ControlElement selectedElement = inputControlsView.getSelectedElement();
-                if (selectedElement != null) {
-                    showControlElementSettings(v);
-                }
-                else AppUtils.showToast(this, R.string.no_control_element_selected);
-                break;
-        }
+@Override
+public void onClick(View v) {
+    switch (v.getId()) {
+        case R.id.BTAddElement:
+            if (!inputControlsView.addElement()) {
+                AppUtils.showToast(this, R.string.no_profile_selected);
+            }
+            break;
+
+        case R.id.BTRemoveElement:
+            if (!inputControlsView.removeElement()) {
+                AppUtils.showToast(this, R.string.no_control_element_selected);
+            }
+            break;
+
+        case R.id.BTElementSettings:
+            ControlElement selectedElement = inputControlsView.getSelectedElement();
+
+            if (selectedElement != null) {
+                showControlElementSettings(v);
+            }
+            else {
+                AppUtils.showToast(this, R.string.no_control_element_selected);
+            }
+            break;
+
+        case R.id.BTSave:
+            if (profile != null) {
+                profile.save();
+                AppUtils.showToast(this, R.string.controls_saved);
+            }
+            break;
     }
+}
 
     private void showControlElementSettings(View anchorView) {
         final ControlElement element = inputControlsView.getSelectedElement();
