@@ -45,10 +45,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int selectedProfileId;
     private Callback<Uri> openFileCallback;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main_activity);
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    if (launchHomeScreenShortcut(getIntent())) {
+        return;
+    }
+
+    setContentView(R.layout.main_activity);
 
         drawerLayout = findViewById(R.id.DrawerLayout);
         NavigationView navigationView = findViewById(R.id.NavigationView);
@@ -76,7 +81,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (!requestAppPermissions()) ImageFsInstaller.installIfNeeded(this);
         }
     }
+private boolean launchHomeScreenShortcut(Intent intent) {
+    if (intent == null || !intent.getBooleanExtra("launch_shortcut", false)) {
+        return false;
+    }
 
+    int containerId = intent.getIntExtra("container_id", 0);
+    String shortcutPath = intent.getStringExtra("shortcut_path");
+
+    if (containerId <= 0 || shortcutPath == null || shortcutPath.isEmpty()) {
+        return false;
+    }
+
+    Intent launchIntent = new Intent(this, XServerDisplayActivity.class);
+    launchIntent.putExtra("container_id", containerId);
+    launchIntent.putExtra("shortcut_path", shortcutPath);
+
+    startActivity(launchIntent);
+    finish();
+
+    return true;
+}
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
