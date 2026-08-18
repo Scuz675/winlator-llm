@@ -61,6 +61,15 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
     }
 
     @Override
+    protected void onPause() {
+        if (profile != null) {
+            profile.save();
+        }
+
+        super.onPause();
+    }
+
+    @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.BTAddElement:
