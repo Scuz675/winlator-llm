@@ -3,6 +3,9 @@ package com.winlator;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -13,6 +16,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -51,7 +55,7 @@ public class ShortcutsFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         FrameLayout frameLayout = (FrameLayout)inflater.inflate(R.layout.shortcuts_fragment, container, false);
         recyclerView = frameLayout.findViewById(R.id.RecyclerView);
         emptyTextView = frameLayout.findViewById(R.id.TVEmptyText);
@@ -99,7 +103,11 @@ public class ShortcutsFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             final Shortcut item = data.get(position);
-            if (item.icon != null) holder.imageView.setImageBitmap(item.icon);
+
+            if (item.icon != null) {
+                holder.imageView.setImageBitmap(item.icon);
+            }
+
             holder.title.setText(item.name);
             holder.subtitle.setText(item.container.getName());
             holder.menuButton.setOnClickListener((v) -> showListItemMenu(v, item));
@@ -114,23 +122,92 @@ public class ShortcutsFragment extends Fragment {
         private void showListItemMenu(View anchorView, final Shortcut shortcut) {
             final Context context = getContext();
             PopupMenu listItemMenu = new PopupMenu(context, anchorView);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) listItemMenu.setForceShowIcon(true);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                listItemMenu.setForceShowIcon(true);
+            }
 
             listItemMenu.inflate(R.menu.shortcut_popup_menu);
+
             listItemMenu.setOnMenuItemClickListener((menuItem) -> {
                 int itemId = menuItem.getItemId();
+
                 if (itemId == R.id.shortcut_settings) {
                     (new ShortcutSettingsDialog(ShortcutsFragment.this, shortcut)).show();
                 }
-                else if (itemId == R.id.shortcut_remove) {
-                    ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_shortcut, () -> {
-                        if (shortcut.file.delete() && shortcut.iconFile != null) shortcut.iconFile.delete();
-                        loadShortcutsList();
-                    });
+                else if (itemId == R.id.shortcut_add_to_home_screen) {
+                    addToHomeScreen(shortcut);
                 }
+                else if (itemId == R.id.shortcut_remove) {
+                    ContentDialog.confirm(
+                        context,
+                        R.string.do_you_want_to_remove_this_shortcut,
+                        () -> {
+                            if (shortcut.file.delete() && shortcut.iconFile != null) {
+                                shortcut.iconFile.delete();
+                            }
+
+                            loadShortcutsList();
+                        }
+                    );
+                }
+
                 return true;
             });
+
             listItemMenu.show();
+        }
+
+        private void addToHomeScreen(Shortcut shortcut) {
+            Context context = getContext();
+
+            if (context == null) {
+                return;
+            }
+
+            ShortcutManager shortcutManager =
+                context.getSystemService(ShortcutManager.class);
+
+            if (shortcutManager == null ||
+                !shortcutManager.isRequestPinShortcutSupported()) {
+
+                Toast.makeText(
+                    context,
+                    R.string.home_screen_shortcuts_not_supported,
+                    Toast.LENGTH_LONG
+                ).show();
+
+                return;
+            }
+
+            Intent launchIntent = new Intent(context, MainActivity.class);
+            launchIntent.setAction(Intent.ACTION_VIEW);
+            launchIntent.putExtra("launch_shortcut", true);
+            launchIntent.putExtra("container_id", shortcut.container.id);
+            launchIntent.putExtra("shortcut_path", shortcut.file.getPath());
+
+            String shortcutId =
+                "winlator-" +
+                shortcut.container.id +
+                "-" +
+                Integer.toHexString(shortcut.file.getAbsolutePath().hashCode());
+
+            ShortcutInfo.Builder builder =
+                new ShortcutInfo.Builder(context, shortcutId)
+                    .setShortLabel(shortcut.name)
+                    .setLongLabel(shortcut.name)
+                    .setIntent(launchIntent);
+
+            if (shortcut.icon != null) {
+                builder.setIcon(Icon.createWithBitmap(shortcut.icon));
+            }
+            else {
+                builder.setIcon(
+                    Icon.createWithResource(context, R.mipmap.ic_launcher)
+                );
+            }
+
+            shortcutManager.requestPinShortcut(builder.build(), null);
         }
 
         private void runFromShortcut(Shortcut shortcut) {
@@ -142,7 +219,13 @@ public class ShortcutsFragment extends Fragment {
                 intent.putExtra("shortcut_path", shortcut.file.getPath());
                 activity.startActivity(intent);
             }
-            else XrActivity.openIntent(activity, shortcut.container.id, shortcut.file.getPath());
+            else {
+                XrActivity.openIntent(
+                    activity,
+                    shortcut.container.id,
+                    shortcut.file.getPath()
+                );
+            }
         }
     }
 }
