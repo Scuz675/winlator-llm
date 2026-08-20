@@ -54,6 +54,22 @@
             android:src="@android:drawable/ic_menu_gallery"
             android:contentDescription="@string/controls_background" />
 
+        <TextView
+            android:id="@+id/BTEditorLayer"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:background="?selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="L1"
+            android:textColor="@color/colorPrimary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:contentDescription="@string/controls_editor_layer" />
+
         <ImageButton
             android:id="@+id/BTAddElement"
             style="@style/ToolButton"

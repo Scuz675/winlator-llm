@@ -57,6 +57,13 @@
     <string name="controls_background_saved">Editor background saved</string>
     <string name="controls_background_removed">Editor background removed</string>
     <string name="controls_background_error">Could not load editor background</string>
+    <string name="controls_editor_layer">Editor layer</string>
+    <string name="controls_layer">Control layer</string>
+    <string name="controls_layer_action">Layer action</string>
+    <string name="controls_always_visible">Always visible</string>
+    <string name="controls_layer_1">Layer 1</string>
+    <string name="controls_layer_2">Layer 2</string>
+    <string name="controls_layer_3">Layer 3</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="container">Container</string>

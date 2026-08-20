@@ -2,6 +2,7 @@ package com.winlator;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -71,6 +72,8 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         container.findViewById(R.id.BTElementSettings).setOnClickListener(this);
         container.findViewById(R.id.BTSave).setOnClickListener(this);
         container.findViewById(R.id.BTBackground).setOnClickListener(this);
+        container.findViewById(R.id.BTEditorLayer).setOnClickListener(this);
+        updateEditorLayerButton();
         container.findViewById(R.id.BTBackground).setOnLongClickListener(v -> {
             removeEditorBackground();
             return true;
@@ -84,6 +87,12 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         }
 
         super.onPause();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        inputControlsView.post(this::loadEditorBackground);
     }
 
 @Override
@@ -103,6 +112,11 @@ public void onClick(View v) {
 
         case R.id.BTBackground:
             chooseEditorBackground();
+            break;
+
+        case R.id.BTEditorLayer:
+            inputControlsView.setEditorLayer((inputControlsView.getEditorLayer() + 1) % ControlElement.LAYER_COUNT);
+            updateEditorLayerButton();
             break;
 
         case R.id.BTElementSettings:
@@ -128,7 +142,15 @@ public void onClick(View v) {
     private File getEditorBackgroundFile() {
         File directory = new File(getFilesDir(), EDITOR_BACKGROUND_DIR);
         if (!directory.exists()) directory.mkdirs();
-        return new File(directory, "controls-" + profile.id + ".img");
+
+        boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        String suffix = landscape ? "-landscape" : "";
+        return new File(directory, "controls-" + profile.id + suffix + ".img");
+    }
+
+    private void updateEditorLayerButton() {
+        TextView button = findViewById(R.id.BTEditorLayer);
+        if (button != null) button.setText("L" + (inputControlsView.getEditorLayer() + 1));
     }
 
     private void chooseEditorBackground() {
@@ -213,11 +235,13 @@ public void onClick(View v) {
             view.findViewById(R.id.CBToggleSwitch).setVisibility(View.GONE);
             view.findViewById(R.id.LLCustomTextIcon).setVisibility(View.GONE);
             view.findViewById(R.id.LLRangeOptions).setVisibility(View.GONE);
+            view.findViewById(R.id.LLLayerAction).setVisibility(View.GONE);
 
             if (type == ControlElement.Type.BUTTON) {
                 view.findViewById(R.id.LLShape).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.CBToggleSwitch).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.LLCustomTextIcon).setVisibility(View.VISIBLE);
+                view.findViewById(R.id.LLLayerAction).setVisibility(View.VISIBLE);
             }
             else if (type == ControlElement.Type.RANGE_BUTTON) {
                 view.findViewById(R.id.LLRangeOptions).setVisibility(View.VISIBLE);
@@ -229,6 +253,8 @@ public void onClick(View v) {
         loadTypeSpinner(element, view.findViewById(R.id.SType), updateLayout);
         loadShapeSpinner(element, view.findViewById(R.id.SShape));
         loadRangeSpinner(element, view.findViewById(R.id.SRange));
+        loadControlLayerSpinner(element, view.findViewById(R.id.SControlLayer));
+        loadLayerActionSpinner(element, view.findViewById(R.id.SLayerAction));
 
         RadioGroup rgOrientation = view.findViewById(R.id.RGOrientation);
         rgOrientation.check(element.getOrientation() == 1 ? R.id.RBVertical : R.id.RBHorizontal);
@@ -299,6 +325,50 @@ public void onClick(View v) {
             element.setIconId(iconId);
             profile.save();
             inputControlsView.invalidate();
+        });
+    }
+
+    private void loadControlLayerSpinner(final ControlElement element, Spinner spinner) {
+        String[] labels = {
+            getString(R.string.controls_always_visible),
+            getString(R.string.controls_layer_1),
+            getString(R.string.controls_layer_2),
+            getString(R.string.controls_layer_3)
+        };
+        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, labels));
+        spinner.setSelection(element.getLayer() + 1, false);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                int layer = position - 1;
+                if (layer != element.getLayer()) {
+                    element.setLayer(layer);
+                    profile.save();
+                    inputControlsView.refreshLayerVisibility();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void loadLayerActionSpinner(final ControlElement element, Spinner spinner) {
+        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, ControlElement.LayerAction.names()));
+        spinner.setSelection(element.getLayerAction().ordinal(), false);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                ControlElement.LayerAction action = ControlElement.LayerAction.values()[position];
+                if (action != element.getLayerAction()) {
+                    element.setLayerAction(action);
+                    profile.save();
+                    inputControlsView.refreshLayerVisibility();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
     }
 

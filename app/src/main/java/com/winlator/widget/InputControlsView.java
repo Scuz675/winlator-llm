@@ -1,6 +1,7 @@
 package com.winlator.widget;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -13,6 +14,7 @@ import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -57,6 +59,8 @@ public class InputControlsView extends View {
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
+    private int activeLayer = 0;
+    private int editorLayer = 0;
 
     public InputControlsView(Context context) {
         super(context);
@@ -69,6 +73,85 @@ public class InputControlsView extends View {
 
     public void setEditMode(boolean editMode) {
         this.editMode = editMode;
+    }
+
+    public boolean isLandscape() {
+        int width = getWidth();
+        int height = getHeight();
+        if (width > 0 && height > 0) return width > height;
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    public int getEditorLayer() {
+        return editorLayer;
+    }
+
+    public void setEditorLayer(int layer) {
+        editorLayer = normalizeLayer(layer);
+        refreshLayerVisibility();
+    }
+
+    public int getActiveLayer() {
+        return activeLayer;
+    }
+
+    public void setActiveLayer(int layer) {
+        int newLayer = normalizeLayer(layer);
+        if (activeLayer == newLayer) return;
+
+        activeLayer = newLayer;
+        if (profile != null && profile.isElementsLoaded()) {
+            for (ControlElement element : profile.getElements()) {
+                if (!isElementVisible(element)) element.cancelTouch();
+            }
+        }
+        invalidate();
+    }
+
+    public void handleLayerAction(ControlElement.LayerAction action) {
+        switch (action) {
+            case NEXT:
+                setActiveLayer((activeLayer + 1) % ControlElement.LAYER_COUNT);
+                break;
+            case PREVIOUS:
+                setActiveLayer((activeLayer + ControlElement.LAYER_COUNT - 1) % ControlElement.LAYER_COUNT);
+                break;
+            case LAYER_1:
+                setActiveLayer(0);
+                break;
+            case LAYER_2:
+                setActiveLayer(1);
+                break;
+            case LAYER_3:
+                setActiveLayer(2);
+                break;
+            case NONE:
+            default:
+                break;
+        }
+    }
+
+    public void refreshLayerVisibility() {
+        if (editMode && selectedElement != null && !isElementVisible(selectedElement)) {
+            deselectAllElements();
+        }
+        invalidate();
+    }
+
+    public void performControlHaptic() {
+        if (!editMode) {
+            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+        }
+    }
+
+    private int normalizeLayer(int layer) {
+        return Math.max(0, Math.min(ControlElement.LAYER_COUNT - 1, layer));
+    }
+
+    private boolean isElementVisible(ControlElement element) {
+        if (element.getLayerAction() != ControlElement.LayerAction.NONE) return true;
+        int layer = element.getLayer();
+        return layer == ControlElement.LAYER_ALWAYS || layer == (editMode ? editorLayer : activeLayer);
     }
 
     public void setOverlayOpacity(float overlayOpacity) {
@@ -87,6 +170,25 @@ public class InputControlsView extends View {
 
     public int getSnappingSize() {
         return snappingSize;
+    }
+
+    @Override
+    protected synchronized void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+
+        if (profile != null && profile.isElementsLoaded() &&
+            oldw > 0 && oldh > 0 && w > 0 && h > 0) {
+            boolean oldLandscape = oldw > oldh;
+            boolean newLandscape = w > h;
+
+            for (ControlElement element : profile.getElements()) {
+                element.captureLayout(oldw, oldh, oldLandscape);
+                element.applyLayout(w, h, newLandscape);
+                element.cancelTouch();
+            }
+
+            if (editMode) cursor.set(w / 2, h / 2);
+        }
     }
 
     @Override
@@ -109,7 +211,11 @@ public class InputControlsView extends View {
 
         if (profile != null) {
             if (!profile.isElementsLoaded()) profile.loadElements(this);
-            if (showTouchscreenControls) for (ControlElement element : profile.getElements()) element.draw(canvas);
+            if (showTouchscreenControls) {
+                for (ControlElement element : profile.getElements()) {
+                    if (isElementVisible(element)) element.draw(canvas);
+                }
+            }
         }
 
         super.onDraw(canvas);
@@ -167,8 +273,10 @@ public class InputControlsView extends View {
     public synchronized boolean addElement() {
         if (editMode && profile != null) {
             ControlElement element = new ControlElement(this);
+            element.setLayer(editorLayer);
             element.setX(cursor.x);
             element.setY(cursor.y);
+            element.initializeLayoutsFromCurrentPosition();
             profile.addElement(element);
             profile.save();
             selectElement(element);
@@ -213,6 +321,8 @@ public class InputControlsView extends View {
     }
 
     public synchronized void setProfile(ControlsProfile profile) {
+        activeLayer = 0;
+        editorLayer = 0;
         if (profile != null) {
             this.profile = profile;
             deselectAllElements();
@@ -239,7 +349,7 @@ public class InputControlsView extends View {
     private synchronized ControlElement intersectElement(float x, float y) {
         if (profile != null) {
             for (ControlElement element : profile.getElements()) {
-                if (element.containsPoint(x, y)) return element;
+                if (isElementVisible(element) && element.containsPoint(x, y)) return element;
             }
         }
         return null;
@@ -393,6 +503,7 @@ case MotionEvent.ACTION_CANCEL: {
 
                     touchpadView.setPointerButtonLeftEnabled(true);
                     for (ControlElement element : profile.getElements()) {
+                        if (!isElementVisible(element)) continue;
                         if (element.handleTouchDown(pointerId, x, y)) handled = true;
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
                             touchpadView.setPointerButtonLeftEnabled(false);
@@ -408,6 +519,7 @@ case MotionEvent.ACTION_CANCEL: {
 
                         handled = false;
                         for (ControlElement element : profile.getElements()) {
+                            if (!isElementVisible(element)) continue;
                             if (element.handleTouchMove(i, x, y)) handled = true;
                         }
                         if (!handled) touchpadView.onTouchEvent(event);

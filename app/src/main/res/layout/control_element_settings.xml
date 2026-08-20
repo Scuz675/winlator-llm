@@ -20,6 +20,33 @@
             android:id="@+id/SType"
             android:layout_width="match_parent" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/controls_layer" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:id="@+id/SControlLayer"
+            android:layout_width="match_parent" />
+
+        <LinearLayout
+            android:id="@+id/LLLayerAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/controls_layer_action" />
+
+            <Spinner
+                style="@style/ComboBox"
+                android:id="@+id/SLayerAction"
+                android:layout_width="match_parent" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/LLShape"
             android:layout_width="match_parent"

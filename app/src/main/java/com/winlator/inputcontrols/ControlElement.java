@@ -28,6 +28,9 @@ public class ControlElement {
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
     public static final byte TRACKPAD_ACCELERATION_THRESHOLD = 4;
     public static final short BUTTON_MIN_TIME_TO_KEEP_PRESSED = 300;
+    public static final int LAYER_ALWAYS = -1;
+    public static final int LAYER_COUNT = 3;
+
     public enum Type {
         BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD;
 
@@ -38,6 +41,14 @@ public class ControlElement {
             return names;
         }
     }
+    public enum LayerAction {
+        NONE, NEXT, PREVIOUS, LAYER_1, LAYER_2, LAYER_3;
+
+        public static String[] names() {
+            return new String[]{"None", "Next Layer", "Previous Layer", "Layer 1", "Layer 2", "Layer 3"};
+        }
+    }
+
     public enum Shape {
         CIRCLE, RECT, ROUND_RECT, SQUARE;
 
@@ -72,6 +83,14 @@ public class ControlElement {
     private short y;
     private boolean selected = false;
     private boolean toggleSwitch = false;
+    private int layer = 0;
+    private LayerAction layerAction = LayerAction.NONE;
+    private float portraitX = 0.5f;
+    private float portraitY = 0.5f;
+    private float portraitScale = 1.0f;
+    private float landscapeX = 0.5f;
+    private float landscapeY = 0.5f;
+    private float landscapeScale = 1.0f;
     private int currentPointerId = -1;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
@@ -167,6 +186,85 @@ public class ControlElement {
 
     public void setToggleSwitch(boolean toggleSwitch) {
         this.toggleSwitch = toggleSwitch;
+    }
+
+    public int getLayer() {
+        return layer;
+    }
+
+    public void setLayer(int layer) {
+        this.layer = Math.max(LAYER_ALWAYS, Math.min(LAYER_COUNT - 1, layer));
+    }
+
+    public LayerAction getLayerAction() {
+        return layerAction;
+    }
+
+    public void setLayerAction(LayerAction layerAction) {
+        this.layerAction = layerAction != null ? layerAction : LayerAction.NONE;
+    }
+
+    public void setLayouts(float portraitX, float portraitY, float portraitScale,
+                           float landscapeX, float landscapeY, float landscapeScale,
+                           int width, int height, boolean landscape) {
+        this.portraitX = portraitX;
+        this.portraitY = portraitY;
+        this.portraitScale = portraitScale;
+        this.landscapeX = landscapeX;
+        this.landscapeY = landscapeY;
+        this.landscapeScale = landscapeScale;
+        applyLayout(width, height, landscape);
+    }
+
+    public void initializeLayoutsFromCurrentPosition() {
+        int width = inputControlsView.getWidth();
+        int height = inputControlsView.getHeight();
+        if (width <= 0 || height <= 0) return;
+
+        float normalizedX = (float)x / width;
+        float normalizedY = (float)y / height;
+        portraitX = normalizedX;
+        portraitY = normalizedY;
+        portraitScale = scale;
+        landscapeX = normalizedX;
+        landscapeY = normalizedY;
+        landscapeScale = scale;
+    }
+
+    public void captureLayout(int width, int height, boolean landscape) {
+        if (width <= 0 || height <= 0) return;
+
+        if (landscape) {
+            landscapeX = (float)x / width;
+            landscapeY = (float)y / height;
+            landscapeScale = scale;
+        }
+        else {
+            portraitX = (float)x / width;
+            portraitY = (float)y / height;
+            portraitScale = scale;
+        }
+    }
+
+    public void captureCurrentLayout() {
+        captureLayout(inputControlsView.getWidth(), inputControlsView.getHeight(), inputControlsView.isLandscape());
+    }
+
+    public void applyLayout(int width, int height, boolean landscape) {
+        if (width <= 0 || height <= 0) return;
+
+        if (landscape) {
+            x = (short)Math.round(landscapeX * width);
+            y = (short)Math.round(landscapeY * height);
+            scale = landscapeScale;
+        }
+        else {
+            x = (short)Math.round(portraitX * width);
+            y = (short)Math.round(portraitY * height);
+            scale = portraitScale;
+        }
+
+        boundingBoxNeedsUpdate = true;
     }
 
     public Binding getBindingAt(int index) {
@@ -301,6 +399,22 @@ public class ControlElement {
     private String getDisplayText() {
         if (text != null && !text.isEmpty()) {
             return text;
+        }
+        else if (layerAction != LayerAction.NONE) {
+            switch (layerAction) {
+                case NEXT:
+                    return "NEXT";
+                case PREVIOUS:
+                    return "PREV";
+                case LAYER_1:
+                    return "L1";
+                case LAYER_2:
+                    return "L2";
+                case LAYER_3:
+                    return "L3";
+                default:
+                    return "";
+            }
         }
         else {
             Binding binding = getBindingAt(0);
@@ -554,6 +668,7 @@ public class ControlElement {
 
     public JSONObject toJSONObject() {
         try {
+            captureCurrentLayout();
             JSONObject elementJSONObject = new JSONObject();
             elementJSONObject.put("type", type.name());
             elementJSONObject.put("shape", shape.name());
@@ -562,9 +677,20 @@ public class ControlElement {
             for (Binding binding : bindings) bindingsJSONArray.put(binding.name());
 
             elementJSONObject.put("bindings", bindingsJSONArray);
-            elementJSONObject.put("scale", Float.valueOf(scale));
-            elementJSONObject.put("x", (float)x / inputControlsView.getMaxWidth());
-            elementJSONObject.put("y", (float)y / inputControlsView.getMaxHeight());
+
+            // Keep legacy fields as the portrait layout for compatibility with older builds.
+            elementJSONObject.put("scale", Float.valueOf(portraitScale));
+            elementJSONObject.put("x", portraitX);
+            elementJSONObject.put("y", portraitY);
+
+            elementJSONObject.put("portraitX", portraitX);
+            elementJSONObject.put("portraitY", portraitY);
+            elementJSONObject.put("portraitScale", Float.valueOf(portraitScale));
+            elementJSONObject.put("landscapeX", landscapeX);
+            elementJSONObject.put("landscapeY", landscapeY);
+            elementJSONObject.put("landscapeScale", Float.valueOf(landscapeScale));
+            elementJSONObject.put("layer", layer);
+            elementJSONObject.put("layerAction", layerAction.name());
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
             elementJSONObject.put("iconId", iconId);
@@ -592,7 +718,10 @@ public class ControlElement {
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
+            inputControlsView.performControlHaptic();
+
             if (type == Type.BUTTON) {
+                if (layerAction != LayerAction.NONE) return true;
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) inputControlsView.handleInputEvent(getBindingAt(0), true);
                 return true;
@@ -723,6 +852,12 @@ public class ControlElement {
     public boolean handleTouchUp(int pointerId) {
         if (pointerId == currentPointerId) {
             if (type == Type.BUTTON) {
+                if (layerAction != LayerAction.NONE) {
+                    currentPointerId = -1;
+                    inputControlsView.handleLayerAction(layerAction);
+                    return true;
+                }
+
                 Binding binding = getBindingAt(0);
                 if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
@@ -756,5 +891,22 @@ public class ControlElement {
             return true;
         }
         return false;
+    }
+
+    public void cancelTouch() {
+        if (currentPointerId != -1) {
+            if (type == Type.BUTTON && layerAction != LayerAction.NONE) {
+                currentPointerId = -1;
+            }
+            else {
+                handleTouchUp(currentPointerId);
+            }
+        }
+
+        if (type == Type.BUTTON && layerAction == LayerAction.NONE && toggleSwitch && selected) {
+            inputControlsView.handleInputEvent(getBindingAt(0), false);
+            selected = false;
+            inputControlsView.invalidate();
+        }
     }
 }

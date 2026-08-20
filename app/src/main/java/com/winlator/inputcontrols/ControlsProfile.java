@@ -209,9 +209,33 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 element.setType(ControlElement.Type.valueOf(elementJSONObject.getString("type")));
                 element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
-                element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
-                element.setY((int)(elementJSONObject.getDouble("y") * inputControlsView.getMaxHeight()));
-                element.setScale((float)elementJSONObject.getDouble("scale"));
+
+                float legacyX = (float)elementJSONObject.getDouble("x");
+                float legacyY = (float)elementJSONObject.getDouble("y");
+                float legacyScale = (float)elementJSONObject.getDouble("scale");
+
+                float portraitX = (float)elementJSONObject.optDouble("portraitX", legacyX);
+                float portraitY = (float)elementJSONObject.optDouble("portraitY", legacyY);
+                float portraitScale = (float)elementJSONObject.optDouble("portraitScale", legacyScale);
+                float landscapeX = (float)elementJSONObject.optDouble("landscapeX", legacyX);
+                float landscapeY = (float)elementJSONObject.optDouble("landscapeY", legacyY);
+                float landscapeScale = (float)elementJSONObject.optDouble("landscapeScale", legacyScale);
+
+                element.setLayouts(
+                    portraitX, portraitY, portraitScale,
+                    landscapeX, landscapeY, landscapeScale,
+                    inputControlsView.getWidth(), inputControlsView.getHeight(),
+                    inputControlsView.isLandscape()
+                );
+
+                element.setLayer(elementJSONObject.optInt("layer", 0));
+                if (elementJSONObject.has("layerAction")) {
+                    try {
+                        element.setLayerAction(ControlElement.LayerAction.valueOf(elementJSONObject.getString("layerAction")));
+                    }
+                    catch (IllegalArgumentException ignored) {}
+                }
+
                 element.setText(elementJSONObject.getString("text"));
                 element.setIconId(elementJSONObject.getInt("iconId"));
                 if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
