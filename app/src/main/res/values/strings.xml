@@ -53,6 +53,12 @@
     <string name="do_you_want_to_remove_this_preset">Do you want to remove this preset?</string>
     <string name="do_you_want_to_end_this_process">Do you want to end this process?</string>
     <string name="controls_editor">Controls Editor</string>
+    <string name="save">Save</string>
+    <string name="controls_saved">Controls saved</string>
+    <string name="controls_background">Editor background</string>
+    <string name="controls_background_saved">Editor background saved</string>
+    <string name="controls_background_removed">Editor background removed</string>
+    <string name="controls_background_error">Could not load editor background</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="container">Container</string>

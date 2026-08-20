@@ -1,6 +1,10 @@
 package com.winlator;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,11 +34,17 @@ import com.winlator.core.UnitUtils;
 import com.winlator.widget.InputControlsView;
 import com.winlator.widget.NumberPicker;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 
 public class ControlsEditorActivity extends AppCompatActivity implements View.OnClickListener {
+    private static final int REQUEST_EDITOR_BACKGROUND = 4101;
+    private static final String EDITOR_BACKGROUND_DIR = "control_backgrounds";
+
     private InputControlsView inputControlsView;
     private ControlsProfile profile;
 
@@ -51,6 +61,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         profile = InputControlsManager.loadProfile(this, ControlsProfile.getProfileFile(this, getIntent().getIntExtra("profile_id", 0)));
         ((TextView)findViewById(R.id.TVProfileName)).setText(profile.getName());
         inputControlsView.setProfile(profile);
+        loadEditorBackground();
 
         FrameLayout container = findViewById(R.id.FLContainer);
         container.addView(inputControlsView, 0);
@@ -59,6 +70,11 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         container.findViewById(R.id.BTRemoveElement).setOnClickListener(this);
         container.findViewById(R.id.BTElementSettings).setOnClickListener(this);
         container.findViewById(R.id.BTSave).setOnClickListener(this);
+        container.findViewById(R.id.BTBackground).setOnClickListener(this);
+        container.findViewById(R.id.BTBackground).setOnLongClickListener(v -> {
+            removeEditorBackground();
+            return true;
+        });
     }
 
     @Override
@@ -85,6 +101,10 @@ public void onClick(View v) {
             }
             break;
 
+        case R.id.BTBackground:
+            chooseEditorBackground();
+            break;
+
         case R.id.BTElementSettings:
             ControlElement selectedElement = inputControlsView.getSelectedElement();
 
@@ -105,6 +125,84 @@ public void onClick(View v) {
     }
 }
 
+    private File getEditorBackgroundFile() {
+        File directory = new File(getFilesDir(), EDITOR_BACKGROUND_DIR);
+        if (!directory.exists()) directory.mkdirs();
+        return new File(directory, "controls-" + profile.id + ".img");
+    }
+
+    private void chooseEditorBackground() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        startActivityForResult(intent, REQUEST_EDITOR_BACKGROUND);
+    }
+
+    private void loadEditorBackground() {
+        if (profile == null) return;
+
+        File file = getEditorBackgroundFile();
+        if (!file.isFile()) {
+            inputControlsView.clearEditorBackground();
+            return;
+        }
+
+        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+        if (bitmap != null) {
+            inputControlsView.setEditorBackground(bitmap);
+        }
+        else {
+            inputControlsView.clearEditorBackground();
+        }
+    }
+
+    private void saveEditorBackground(Uri uri) {
+        if (profile == null || uri == null) return;
+
+        File target = getEditorBackgroundFile();
+
+        try (
+            InputStream input = getContentResolver().openInputStream(uri);
+            OutputStream output = new FileOutputStream(target)
+        ) {
+            if (input == null) throw new IOException("Could not open selected image");
+
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+
+            loadEditorBackground();
+            AppUtils.showToast(this, R.string.controls_background_saved);
+        }
+        catch (IOException e) {
+            if (target.exists()) target.delete();
+            AppUtils.showToast(this, R.string.controls_background_error);
+        }
+    }
+
+    private void removeEditorBackground() {
+        if (profile == null) return;
+
+        File file = getEditorBackgroundFile();
+        if (file.exists()) file.delete();
+
+        inputControlsView.clearEditorBackground();
+        AppUtils.showToast(this, R.string.controls_background_removed);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_EDITOR_BACKGROUND &&
+            resultCode == Activity.RESULT_OK &&
+            data != null &&
+            data.getData() != null) {
+            saveEditorBackground(data.getData());
+        }
+    }
     private void showControlElementSettings(View anchorView) {
         final ControlElement element = inputControlsView.getSelectedElement();
         View view = LayoutInflater.from(this).inflate(R.layout.control_element_settings, null);

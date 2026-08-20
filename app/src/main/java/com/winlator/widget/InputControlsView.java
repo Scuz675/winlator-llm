@@ -10,6 +10,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.view.KeyEvent;
@@ -52,6 +53,7 @@ public class InputControlsView extends View {
     private TouchpadView touchpadView;
     private XServer xServer;
     private final Bitmap[] icons = new Bitmap[17];
+    private Bitmap editorBackground;
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
@@ -71,6 +73,16 @@ public class InputControlsView extends View {
 
     public void setOverlayOpacity(float overlayOpacity) {
         this.overlayOpacity = overlayOpacity;
+    }
+
+    public void setEditorBackground(Bitmap bitmap) {
+        editorBackground = bitmap;
+        invalidate();
+    }
+
+    public void clearEditorBackground() {
+        editorBackground = null;
+        invalidate();
     }
 
     public int getSnappingSize() {
@@ -106,14 +118,22 @@ public class InputControlsView extends View {
     private void drawGrid(Canvas canvas) {
         paint.setStyle(Paint.Style.FILL);
         paint.setStrokeWidth(snappingSize * 0.0625f);
-        paint.setColor(0xff000000);
-        canvas.drawColor(Color.BLACK);
-
-        paint.setAntiAlias(false);
-        paint.setColor(0xff303030);
 
         int width = getMaxWidth();
         int height = getMaxHeight();
+        boolean hasEditorBackground = editorBackground != null && !editorBackground.isRecycled();
+
+        if (hasEditorBackground) {
+            paint.setAlpha(180);
+            canvas.drawBitmap(editorBackground, null, new Rect(0, 0, width, height), paint);
+            paint.setAlpha(255);
+        }
+        else {
+            canvas.drawColor(Color.BLACK);
+        }
+
+        paint.setAntiAlias(false);
+        paint.setColor(hasEditorBackground ? 0x90303030 : 0xff303030);
 
         for (int i = 0; i < width; i += snappingSize) {
             canvas.drawLine(i, 0, i, height, paint);
@@ -122,7 +142,7 @@ public class InputControlsView extends View {
 
         float cx = Mathf.roundTo(width * 0.5f, snappingSize);
         float cy = Mathf.roundTo(height * 0.5f, snappingSize);
-        paint.setColor(0xff424242);
+        paint.setColor(hasEditorBackground ? 0xb0424242 : 0xff424242);
 
         for (int i = 0; i < width; i += snappingSize * 2) {
             canvas.drawLine(cx, i, cx, i + snappingSize, paint);
