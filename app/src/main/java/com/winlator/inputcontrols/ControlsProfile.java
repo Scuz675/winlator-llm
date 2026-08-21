@@ -230,6 +230,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
                 element.setLayer(elementJSONObject.optInt("layer", 0));
                 element.setHitboxScale((float)elementJSONObject.optDouble("hitboxScale", 1.0));
+                element.setIdleOpacity((float)elementJSONObject.optDouble("idleOpacity", 1.0));
+                element.setActiveOpacity((float)elementJSONObject.optDouble("activeOpacity", 1.0));
+                element.setIconScale((float)elementJSONObject.optDouble("iconScale", 1.0));
                 element.setStickDeadZone((float)elementJSONObject.optDouble("stickDeadZone", ControlElement.STICK_DEAD_ZONE));
                 element.setMouseSensitivity((float)elementJSONObject.optDouble("mouseSensitivity", 1.0));
                 element.setMouseAreaWidth((float)elementJSONObject.optDouble("mouseAreaWidth", 1.0));

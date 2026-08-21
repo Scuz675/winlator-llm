@@ -19,6 +19,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.util.SparseArray;
 import android.widget.FrameLayout;
 
 import com.winlator.inputcontrols.Binding;
@@ -54,7 +55,7 @@ public class InputControlsView extends View {
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
     private XServer xServer;
-    private final Bitmap[] icons = new Bitmap[17];
+    private final SparseArray<Bitmap> icons = new SparseArray<>();
     private Bitmap editorBackground;
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
@@ -668,14 +669,17 @@ case MotionEvent.ACTION_CANCEL: {
         }
     }
 
-    public Bitmap getIcon(byte id) {
-        if (icons[id] == null) {
+    public Bitmap getIcon(int id) {
+        Bitmap icon = icons.get(id);
+        if (icon == null) {
             Context context = getContext();
             try (InputStream is = context.getAssets().open("inputcontrols/icons/"+id+".png")) {
-                icons[id] = BitmapFactory.decodeStream(is);
+                icon = BitmapFactory.decodeStream(is);
+                if (icon != null) icons.put(id, icon);
             }
             catch (IOException e) {}
         }
-        return icons[id];
+        if (icon == null && id != 0) return getIcon(0);
+        return icon;
     }
 }

@@ -109,7 +109,10 @@ public class ControlElement {
     private boolean[] states = new boolean[4];
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
-    private byte iconId;
+    private int iconId;
+    private float idleOpacity = 1.0f;
+    private float activeOpacity = 1.0f;
+    private float iconScale = 1.0f;
     private Range range;
     private byte orientation;
     private PointF currentPosition;
@@ -348,6 +351,9 @@ public class ControlElement {
         landscapeScale = source.landscapeScale;
         text = source.text;
         iconId = source.iconId;
+        idleOpacity = source.idleOpacity;
+        activeOpacity = source.activeOpacity;
+        iconScale = source.iconScale;
         range = source.range;
         orientation = source.orientation;
         if (type == Type.RANGE_BUTTON) scroller = new RangeScroller(inputControlsView, this);
@@ -397,13 +403,20 @@ public class ControlElement {
         this.text = text != null ? text : "";
     }
 
-    public byte getIconId() {
+    public int getIconId() {
         return iconId;
     }
 
     public void setIconId(int iconId) {
-        this.iconId = (byte)iconId;
+        this.iconId = Math.max(0, iconId);
     }
+
+    public float getIdleOpacity() { return idleOpacity; }
+    public void setIdleOpacity(float value) { idleOpacity = Mathf.clamp(value, 0.0f, 1.0f); }
+    public float getActiveOpacity() { return activeOpacity; }
+    public void setActiveOpacity(float value) { activeOpacity = Mathf.clamp(value, 0.0f, 1.0f); }
+    public float getIconScale() { return iconScale; }
+    public void setIconScale(float value) { iconScale = Mathf.clamp(value, 0.5f, 1.5f); }
 
     public Rect getBoundingBox() {
         if (boundingBoxNeedsUpdate) computeBoundingBox();
@@ -529,6 +542,25 @@ public class ControlElement {
 
     public void draw(Canvas canvas) {
         int snappingSize = inputControlsView.getSnappingSize();
+        Rect boundingBox = getBoundingBox();
+        boolean active = currentPointerId != -1 || (type == Type.BUTTON && toggleSwitch && selected);
+        int opacitySaveCount = -1;
+        if (!inputControlsView.isEditMode()) {
+            int alpha = Math.round((active ? activeOpacity : idleOpacity) * 255.0f);
+            if (alpha == 0) return;
+            if (alpha < 255) {
+                if (active && type == Type.STICK && stickMode != StickMode.FIXED) {
+                    opacitySaveCount = canvas.saveLayerAlpha(0, 0,
+                        inputControlsView.getWidth(), inputControlsView.getHeight(), alpha);
+                }
+                else {
+                    float padding = snappingSize * Math.max(1.0f, 2.0f * scale);
+                    opacitySaveCount = canvas.saveLayerAlpha(
+                        boundingBox.left - padding, boundingBox.top - padding,
+                        boundingBox.right + padding, boundingBox.bottom + padding, alpha);
+                }
+            }
+        }
         Paint paint = inputControlsView.getPaint();
         int primaryColor = inputControlsView.getPrimaryColor();
 
@@ -536,7 +568,6 @@ public class ControlElement {
         paint.setStyle(Paint.Style.STROKE);
         float strokeWidth = snappingSize * 0.25f;
         paint.setStrokeWidth(strokeWidth);
-        Rect boundingBox = getBoundingBox();
 
         switch (type) {
             case BUTTON: {
@@ -734,14 +765,16 @@ public class ControlElement {
                 break;
             }
         }
+        if (opacitySaveCount != -1) canvas.restoreToCount(opacitySaveCount);
     }
 
     private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId) {
         Paint paint = inputControlsView.getPaint();
-        Bitmap icon = inputControlsView.getIcon((byte)iconId);
+        Bitmap icon = inputControlsView.getIcon(iconId);
+        if (icon == null) return;
         paint.setColorFilter(inputControlsView.getColorFilter());
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
-        int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
+        int halfSize = (int)((Math.min(width, height) - margin) * 0.5f * iconScale);
 
         Rect srcRect = new Rect(0, 0, icon.getWidth(), icon.getHeight());
         Rect dstRect = new Rect((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize));
@@ -787,6 +820,9 @@ public class ControlElement {
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
             elementJSONObject.put("iconId", iconId);
+            elementJSONObject.put("idleOpacity", idleOpacity);
+            elementJSONObject.put("activeOpacity", activeOpacity);
+            elementJSONObject.put("iconScale", iconScale);
 
             if (type == Type.RANGE_BUTTON && range != null) {
                 elementJSONObject.put("range", range.name());
@@ -827,6 +863,7 @@ public class ControlElement {
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
+            inputControlsView.invalidate();
             inputControlsView.performControlHaptic();
 
             if (type == Type.BUTTON) {
@@ -994,11 +1031,13 @@ public class ControlElement {
             if (type == Type.BUTTON) {
                 if (layerAction != LayerAction.NONE) {
                     currentPointerId = -1;
+                    inputControlsView.invalidate();
                     inputControlsView.handleLayerAction(layerAction);
                     return true;
                 }
                 if (expandAction != ExpandAction.NONE) {
                     currentPointerId = -1;
+                    inputControlsView.invalidate();
                     inputControlsView.handleExpandAction(expandAction);
                     return true;
                 }
@@ -1038,6 +1077,7 @@ public class ControlElement {
                 stickCenter = null;
             }
             currentPointerId = -1;
+            inputControlsView.invalidate();
             return true;
         }
         return false;
@@ -1047,6 +1087,7 @@ public class ControlElement {
         if (currentPointerId != -1) {
             if (type == Type.BUTTON && (layerAction != LayerAction.NONE || expandAction != ExpandAction.NONE)) {
                 currentPointerId = -1;
+                inputControlsView.invalidate();
             }
             else {
                 handleTouchUp(currentPointerId);

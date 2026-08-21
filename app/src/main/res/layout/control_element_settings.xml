@@ -91,6 +91,12 @@
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/touch_hitbox_scale" />
         <SeekBar android:id="@+id/SBHitboxScale" android:layout_width="match_parent" android:layout_height="wrap_content" android:min="100" android:max="300" />
 
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/idle_opacity" />
+        <SeekBar android:id="@+id/SBIdleOpacity" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/active_opacity" />
+        <SeekBar android:id="@+id/SBActiveOpacity" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" />
+
         <CheckBox android:id="@+id/CBEditorLocked" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/lock_position" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/expandable_group" />
@@ -255,6 +261,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/icon" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/icon_scale" />
+            <SeekBar android:id="@+id/SBIconScale" android:layout_width="match_parent" android:layout_height="wrap_content" android:min="50" android:max="150" />
 
             <HorizontalScrollView
                 android:layout_width="match_parent"

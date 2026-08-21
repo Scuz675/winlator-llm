@@ -249,6 +249,9 @@
     <string name="save">Save</string>
 <string name="controls_saved">Controls saved</string>
     <string name="touch_hitbox_scale">Touch hitbox scale</string>
+    <string name="idle_opacity">Idle opacity</string>
+    <string name="active_opacity">Active opacity</string>
+    <string name="icon_scale">Icon scale</string>
     <string name="lock_position">Lock position in editor</string>
     <string name="expandable_group">Expandable group</string>
     <string name="expandable_action">Expandable group action</string>

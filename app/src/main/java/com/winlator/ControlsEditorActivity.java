@@ -40,7 +40,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ControlsEditorActivity extends AppCompatActivity implements View.OnClickListener {
     private static final int REQUEST_EDITOR_BACKGROUND = 4101;
@@ -275,6 +276,9 @@ public void onClick(View v) {
         loadSimpleSpinner(view.findViewById(R.id.SExpandAction), new String[]{"None", "Toggle Group 1", "Toggle Group 2", "Toggle Group 3", "Toggle Group 4"}, element.getExpandAction().ordinal(), p -> element.setExpandAction(ControlElement.ExpandAction.values()[p]));
 
         setupSeekBar(view.findViewById(R.id.SBHitboxScale), Math.round(element.getHitboxScale()*100), p -> element.setHitboxScale(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBIdleOpacity), Math.round(element.getIdleOpacity()*100), p -> element.setIdleOpacity(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBActiveOpacity), Math.round(element.getActiveOpacity()*100), p -> element.setActiveOpacity(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBIconScale), Math.round(element.getIconScale()*100), p -> element.setIconScale(p/100f));
         setupSeekBar(view.findViewById(R.id.SBDeadZone), Math.round(element.getStickDeadZone()*100), p -> element.setStickDeadZone(p/100f));
         setupSeekBar(view.findViewById(R.id.SBMouseSensitivity), Math.round(element.getMouseSensitivity()*100), p -> element.setMouseSensitivity(p/100f));
         setupSeekBar(view.findViewById(R.id.SBMouseWidth), Math.round(element.getMouseAreaWidth()*100), p -> element.setMouseAreaWidth(p/100f));
@@ -339,11 +343,11 @@ public void onClick(View v) {
         PopupWindow popupWindow = AppUtils.showPopupWindow(anchorView, view, 340, 0);
         popupWindow.setOnDismissListener(() -> {
             String text = etCustomText.getText().toString().trim();
-            byte iconId = 0;
+            int iconId = 0;
             for (int i = 0; i < llIconList.getChildCount(); i++) {
                 View child = llIconList.getChildAt(i);
                 if (child.isSelected()) {
-                    iconId = (byte)child.getTag();
+                    iconId = (int)child.getTag();
                     break;
                 }
             }
@@ -570,18 +574,18 @@ public void onClick(View v) {
         });
     }
 
-    private void loadIcons(final LinearLayout parent, byte selectedId) {
-        byte[] iconIds = new byte[0];
+    private void loadIcons(final LinearLayout parent, int selectedId) {
+        List<Integer> iconIds = new ArrayList<>();
         try {
             String[] filenames = getAssets().list("inputcontrols/icons/");
-            iconIds = new byte[filenames.length];
-            for (int i = 0; i < filenames.length; i++) {
-                iconIds[i] = Byte.parseByte(FileUtils.getBasename(filenames[i]));
+            if (filenames != null) for (String filename : filenames) {
+                String name = FileUtils.getBasename(filename);
+                if (name.matches("\\d+")) iconIds.add(Integer.parseInt(name));
             }
         }
         catch (IOException e) {}
 
-        Arrays.sort(iconIds);
+        iconIds.sort(Integer::compareTo);
 
         int size = (int)UnitUtils.dpToPx(40);
         int margin = (int)UnitUtils.dpToPx(2);
@@ -589,7 +593,7 @@ public void onClick(View v) {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(size, size);
         params.setMargins(margin, 0, margin, 0);
 
-        for (final byte id : iconIds) {
+        for (final int id : iconIds) {
             ImageView imageView = new ImageView(this);
             imageView.setLayoutParams(params);
             imageView.setPadding(padding, padding, padding, padding);
