@@ -229,6 +229,19 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 );
 
                 element.setLayer(elementJSONObject.optInt("layer", 0));
+                element.setHitboxScale((float)elementJSONObject.optDouble("hitboxScale", 1.0));
+                element.setStickDeadZone((float)elementJSONObject.optDouble("stickDeadZone", ControlElement.STICK_DEAD_ZONE));
+                element.setMouseSensitivity((float)elementJSONObject.optDouble("mouseSensitivity", 1.0));
+                element.setMouseAreaWidth((float)elementJSONObject.optDouble("mouseAreaWidth", 1.0));
+                element.setMouseAreaHeight((float)elementJSONObject.optDouble("mouseAreaHeight", 1.0));
+                element.setExpandGroup(elementJSONObject.optInt("expandGroup", 0));
+                element.setEditorLocked(elementJSONObject.optBoolean("editorLocked", false));
+                try { element.setStickMode(ControlElement.StickMode.valueOf(elementJSONObject.optString("stickMode", "FIXED"))); }
+                catch (IllegalArgumentException ignored) {}
+                try { element.setMouseMode(ControlElement.MouseMode.valueOf(elementJSONObject.optString("mouseMode", "RELATIVE_MOUSE"))); }
+                catch (IllegalArgumentException ignored) {}
+                try { element.setExpandAction(ControlElement.ExpandAction.valueOf(elementJSONObject.optString("expandAction", "NONE"))); }
+                catch (IllegalArgumentException ignored) {}
                 if (elementJSONObject.has("layerAction")) {
                     try {
                         element.setLayerAction(ControlElement.LayerAction.valueOf(elementJSONObject.getString("layerAction")));

@@ -32,7 +32,7 @@ public class ControlElement {
     public static final int LAYER_COUNT = 3;
 
     public enum Type {
-        BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD;
+        BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, MOUSE_AREA;
 
         public static String[] names() {
             Type[] types = values();
@@ -41,6 +41,9 @@ public class ControlElement {
             return names;
         }
     }
+    public enum StickMode { FIXED, FLOATING, FOLLOW_THUMB }
+    public enum MouseMode { RELATIVE_MOUSE, CAMERA_LOOK, DIRECT_TOUCH }
+    public enum ExpandAction { NONE, TOGGLE_GROUP_1, TOGGLE_GROUP_2, TOGGLE_GROUP_3, TOGGLE_GROUP_4 }
     public enum LayerAction {
         NONE, NEXT, PREVIOUS, LAYER_1, LAYER_2, LAYER_3;
 
@@ -85,6 +88,16 @@ public class ControlElement {
     private boolean toggleSwitch = false;
     private int layer = 0;
     private LayerAction layerAction = LayerAction.NONE;
+    private StickMode stickMode = StickMode.FIXED;
+    private MouseMode mouseMode = MouseMode.RELATIVE_MOUSE;
+    private ExpandAction expandAction = ExpandAction.NONE;
+    private int expandGroup = 0;
+    private float stickDeadZone = STICK_DEAD_ZONE;
+    private float hitboxScale = 1.0f;
+    private float mouseSensitivity = 1.0f;
+    private float mouseAreaWidth = 1.0f;
+    private float mouseAreaHeight = 1.0f;
+    private boolean editorLocked = false;
     private float portraitX = 0.5f;
     private float portraitY = 0.5f;
     private float portraitScale = 1.0f;
@@ -100,6 +113,7 @@ public class ControlElement {
     private Range range;
     private byte orientation;
     private PointF currentPosition;
+    private PointF stickCenter;
     private RangeScroller scroller;
     private CubicBezierInterpolator interpolator;
     private Object touchTime;
@@ -204,6 +218,27 @@ public class ControlElement {
         this.layerAction = layerAction != null ? layerAction : LayerAction.NONE;
     }
 
+    public StickMode getStickMode() { return stickMode; }
+    public void setStickMode(StickMode value) { stickMode = value != null ? value : StickMode.FIXED; }
+    public MouseMode getMouseMode() { return mouseMode; }
+    public void setMouseMode(MouseMode value) { mouseMode = value != null ? value : MouseMode.RELATIVE_MOUSE; }
+    public ExpandAction getExpandAction() { return expandAction; }
+    public void setExpandAction(ExpandAction value) { expandAction = value != null ? value : ExpandAction.NONE; }
+    public int getExpandGroup() { return expandGroup; }
+    public void setExpandGroup(int value) { expandGroup = Math.max(0, Math.min(4, value)); }
+    public float getStickDeadZone() { return stickDeadZone; }
+    public void setStickDeadZone(float value) { stickDeadZone = Mathf.clamp(value, 0.0f, 0.9f); }
+    public float getHitboxScale() { return hitboxScale; }
+    public void setHitboxScale(float value) { hitboxScale = Mathf.clamp(value, 1.0f, 3.0f); }
+    public float getMouseSensitivity() { return mouseSensitivity; }
+    public void setMouseSensitivity(float value) { mouseSensitivity = Mathf.clamp(value, 0.1f, 5.0f); }
+    public float getMouseAreaWidth() { return mouseAreaWidth; }
+    public void setMouseAreaWidth(float value) { mouseAreaWidth = Mathf.clamp(value, 0.25f, 4.0f); boundingBoxNeedsUpdate = true; }
+    public float getMouseAreaHeight() { return mouseAreaHeight; }
+    public void setMouseAreaHeight(float value) { mouseAreaHeight = Mathf.clamp(value, 0.25f, 4.0f); boundingBoxNeedsUpdate = true; }
+    public boolean isEditorLocked() { return editorLocked; }
+    public void setEditorLocked(boolean value) { editorLocked = value; }
+
     public void setLayouts(float portraitX, float portraitY, float portraitScale,
                            float landscapeX, float landscapeY, float landscapeScale,
                            int width, int height, boolean landscape) {
@@ -284,6 +319,39 @@ public class ControlElement {
 
     public void setBinding(Binding binding) {
         Arrays.fill(bindings, binding);
+    }
+
+    public void loadOptionalPropertiesFrom(ControlElement source) {
+        type = source.type;
+        shape = source.shape;
+        bindings = Arrays.copyOf(source.bindings, source.bindings.length);
+        states = new boolean[bindings.length];
+        scale = source.scale;
+        toggleSwitch = source.toggleSwitch;
+        layer = source.layer;
+        layerAction = source.layerAction;
+        stickMode = source.stickMode;
+        mouseMode = source.mouseMode;
+        expandAction = source.expandAction;
+        expandGroup = source.expandGroup;
+        stickDeadZone = source.stickDeadZone;
+        hitboxScale = source.hitboxScale;
+        mouseSensitivity = source.mouseSensitivity;
+        mouseAreaWidth = source.mouseAreaWidth;
+        mouseAreaHeight = source.mouseAreaHeight;
+        editorLocked = source.editorLocked;
+        portraitX = source.portraitX;
+        portraitY = source.portraitY;
+        portraitScale = source.portraitScale;
+        landscapeX = source.landscapeX;
+        landscapeY = source.landscapeY;
+        landscapeScale = source.landscapeScale;
+        text = source.text;
+        iconId = source.iconId;
+        range = source.range;
+        orientation = source.orientation;
+        if (type == Type.RANGE_BUTTON) scroller = new RangeScroller(inputControlsView, this);
+        boundingBoxNeedsUpdate = true;
     }
 
     public float getScale() {
@@ -374,6 +442,11 @@ public class ControlElement {
             case STICK: {
                 halfWidth = snappingSize * 6;
                 halfHeight = snappingSize * 6;
+                break;
+            }
+            case MOUSE_AREA: {
+                halfWidth = (int)(snappingSize * 10 * mouseAreaWidth);
+                halfHeight = (int)(snappingSize * 7 * mouseAreaHeight);
                 break;
             }
             case RANGE_BUTTON: {
@@ -621,8 +694,8 @@ public class ControlElement {
                 break;
             }
             case STICK: {
-                int cx = boundingBox.centerX();
-                int cy = boundingBox.centerY();
+                float cx = stickCenter != null ? stickCenter.x : boundingBox.centerX();
+                float cy = stickCenter != null ? stickCenter.y : boundingBox.centerY();
                 int oldColor = paint.getColor();
                 canvas.drawCircle(cx, cy, boundingBox.height() * 0.5f, paint);
 
@@ -648,6 +721,16 @@ public class ControlElement {
                 radius = (innerHeight / boundingBox.height()) * radius - (innerStrokeWidth * 0.5f + strokeWidth * 0.5f);
                 paint.setStrokeWidth(innerStrokeWidth);
                 canvas.drawRoundRect(boundingBox.left + offset, boundingBox.top + offset, boundingBox.right - offset, boundingBox.bottom - offset, radius, radius, paint);
+                break;
+            }
+            case MOUSE_AREA: {
+                if (inputControlsView.isEditMode()) {
+                    paint.setStyle(Paint.Style.STROKE);
+                    canvas.drawRect(boundingBox, paint);
+                    paint.setTextAlign(Paint.Align.CENTER);
+                    paint.setTextSize(snappingSize * 1.5f * scale);
+                    canvas.drawText("MOUSE AREA", boundingBox.centerX(), boundingBox.centerY(), paint);
+                }
                 break;
             }
         }
@@ -691,6 +774,16 @@ public class ControlElement {
             elementJSONObject.put("landscapeScale", Float.valueOf(landscapeScale));
             elementJSONObject.put("layer", layer);
             elementJSONObject.put("layerAction", layerAction.name());
+            elementJSONObject.put("stickMode", stickMode.name());
+            elementJSONObject.put("stickDeadZone", stickDeadZone);
+            elementJSONObject.put("hitboxScale", hitboxScale);
+            elementJSONObject.put("mouseMode", mouseMode.name());
+            elementJSONObject.put("mouseSensitivity", mouseSensitivity);
+            elementJSONObject.put("mouseAreaWidth", mouseAreaWidth);
+            elementJSONObject.put("mouseAreaHeight", mouseAreaHeight);
+            elementJSONObject.put("expandGroup", expandGroup);
+            elementJSONObject.put("expandAction", expandAction.name());
+            elementJSONObject.put("editorLocked", editorLocked);
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
             elementJSONObject.put("iconId", iconId);
@@ -707,7 +800,23 @@ public class ControlElement {
     }
 
     public boolean containsPoint(float x, float y) {
-        return getBoundingBox().contains((int)(x + 0.5f), (int)(y + 0.5f));
+        Rect box = getBoundingBox();
+        float halfWidth = box.width() * hitboxScale * 0.5f;
+        float halfHeight = box.height() * hitboxScale * 0.5f;
+        return x >= box.centerX() - halfWidth && x <= box.centerX() + halfWidth &&
+               y >= box.centerY() - halfHeight && y <= box.centerY() + halfHeight;
+    }
+
+    public void drawHitbox(Canvas canvas) {
+        Rect box = getBoundingBox();
+        float halfWidth = box.width() * hitboxScale * 0.5f;
+        float halfHeight = box.height() * hitboxScale * 0.5f;
+        Paint paint = inputControlsView.getPaint();
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(Math.max(1, inputControlsView.getSnappingSize() * 0.15f));
+        paint.setColor(0xffff9800);
+        canvas.drawRect(box.centerX() - halfWidth, box.centerY() - halfHeight,
+            box.centerX() + halfWidth, box.centerY() + halfHeight, paint);
     }
 
     private boolean isKeepButtonPressedAfterMinTime() {
@@ -722,8 +831,9 @@ public class ControlElement {
 
             if (type == Type.BUTTON) {
                 if (layerAction != LayerAction.NONE) return true;
+                if (expandAction != ExpandAction.NONE) return true;
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
-                if (!toggleSwitch || !selected) inputControlsView.handleInputEvent(getBindingAt(0), true);
+                if (!toggleSwitch || !selected) pressButtonBindings();
                 return true;
             }
             else if (type == Type.RANGE_BUTTON) {
@@ -731,9 +841,17 @@ public class ControlElement {
                 return true;
             }
             else {
-                if (type == Type.TRACKPAD) {
+                if (type == Type.TRACKPAD || type == Type.MOUSE_AREA) {
                     if (currentPosition == null) currentPosition = new PointF();
                     currentPosition.set(x, y);
+                }
+                if (type == Type.STICK && stickMode != StickMode.FIXED) {
+                    if (stickCenter == null) stickCenter = new PointF();
+                    stickCenter.set(x, y);
+                }
+                if (type == Type.MOUSE_AREA) {
+                    if (mouseMode == MouseMode.CAMERA_LOOK) inputControlsView.handleInputEvent(Binding.MOUSE_RIGHT_BUTTON, true);
+                    else if (mouseMode == MouseMode.DIRECT_TOUCH) inputControlsView.handleInputEvent(Binding.MOUSE_LEFT_BUTTON, true);
                 }
                 return handleTouchMove(pointerId, x, y);
             }
@@ -742,13 +860,26 @@ public class ControlElement {
     }
 
     public boolean handleTouchMove(int pointerId, float x, float y) {
-        if (pointerId == currentPointerId && (type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD)) {
+        if (pointerId == currentPointerId && (type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD || type == Type.MOUSE_AREA)) {
             float deltaX, deltaY;
             Rect boundingBox = getBoundingBox();
             float radius = boundingBox.width() * 0.5f;
+            float centerX = boundingBox.centerX();
+            float centerY = boundingBox.centerY();
             TouchpadView touchpadView =  inputControlsView.getTouchpadView();
 
-            if (type == Type.TRACKPAD) {
+            if (type == Type.MOUSE_AREA) {
+                if (mouseMode == MouseMode.DIRECT_TOUCH) {
+                    inputControlsView.getXServer().injectPointerMove((int)(x * inputControlsView.getXServer().screenInfo.width / inputControlsView.getWidth()),
+                        (int)(y * inputControlsView.getXServer().screenInfo.height / inputControlsView.getHeight()));
+                }
+                else if (currentPosition != null) {
+                    inputControlsView.getXServer().injectPointerMoveDelta(Math.round((x-currentPosition.x)*mouseSensitivity), Math.round((y-currentPosition.y)*mouseSensitivity));
+                }
+                if (currentPosition != null) currentPosition.set(x, y);
+                return true;
+            }
+            else if (type == Type.TRACKPAD) {
                 if (currentPosition == null) currentPosition = new PointF();
                 float[] deltaPoint = touchpadView.computeDeltaPoint(currentPosition.x, currentPosition.y, x, y);
                 deltaX = deltaPoint[0];
@@ -756,8 +887,16 @@ public class ControlElement {
                 currentPosition.set(x, y);
             }
             else {
-                float localX = x - boundingBox.left;
-                float localY = y - boundingBox.top;
+                if (type == Type.STICK && stickMode != StickMode.FIXED && stickCenter != null) {
+                    centerX = stickCenter.x;
+                    centerY = stickCenter.y;
+                    if (stickMode == StickMode.FOLLOW_THUMB) {
+                        float dx = x-centerX, dy = y-centerY, length = (float)Math.sqrt(dx*dx+dy*dy);
+                        if (length > radius) { centerX += dx*(length-radius)/length; centerY += dy*(length-radius)/length; stickCenter.set(centerX, centerY); }
+                    }
+                }
+                float localX = x - (centerX-radius);
+                float localY = y - (centerY-radius);
                 float offsetX = localX - radius;
                 float offsetY = localY - radius;
 
@@ -774,15 +913,16 @@ public class ControlElement {
 
             if (type == Type.STICK) {
                 if (currentPosition == null) currentPosition = new PointF();
-                currentPosition.x = boundingBox.left + deltaX * radius + radius;
-                currentPosition.y = boundingBox.top + deltaY * radius + radius;
-                final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                currentPosition.x = centerX + deltaX * radius;
+                currentPosition.y = centerY + deltaY * radius;
+                final boolean[] states = {deltaY <= -stickDeadZone, deltaX >= stickDeadZone, deltaY >= stickDeadZone, deltaX <= -stickDeadZone};
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
                     Binding binding = getBindingAt(i);
                     if (binding.isGamepad()) {
-                        value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
+                        value = Math.abs(value) < stickDeadZone ? 0 :
+                            Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
                         inputControlsView.handleInputEvent(binding, true, value);
                         this.states[i] = true;
                     }
@@ -857,22 +997,31 @@ public class ControlElement {
                     inputControlsView.handleLayerAction(layerAction);
                     return true;
                 }
+                if (expandAction != ExpandAction.NONE) {
+                    currentPointerId = -1;
+                    inputControlsView.handleExpandAction(expandAction);
+                    return true;
+                }
 
                 Binding binding = getBindingAt(0);
                 if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
-                    if (!selected) inputControlsView.handleInputEvent(binding, false);
+                    if (!selected) releaseButtonBindings();
                     touchTime = null;
                     inputControlsView.invalidate();
                 }
-                else if (!toggleSwitch || selected) inputControlsView.handleInputEvent(binding, false);
+                else if (!toggleSwitch || selected) releaseButtonBindings();
 
                 if (toggleSwitch) {
                     selected = !selected;
                     inputControlsView.invalidate();
                 }
             }
-            else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
+            else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD || type == Type.MOUSE_AREA) {
+                if (type == Type.MOUSE_AREA) {
+                    if (mouseMode == MouseMode.CAMERA_LOOK) inputControlsView.handleInputEvent(Binding.MOUSE_RIGHT_BUTTON, false);
+                    else if (mouseMode == MouseMode.DIRECT_TOUCH) inputControlsView.handleInputEvent(Binding.MOUSE_LEFT_BUTTON, false);
+                }
                 for (byte i = 0; i < states.length; i++) {
                     if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
                     states[i] = false;
@@ -886,6 +1035,7 @@ public class ControlElement {
                 }
 
                 if (currentPosition != null) currentPosition = null;
+                stickCenter = null;
             }
             currentPointerId = -1;
             return true;
@@ -895,7 +1045,7 @@ public class ControlElement {
 
     public void cancelTouch() {
         if (currentPointerId != -1) {
-            if (type == Type.BUTTON && layerAction != LayerAction.NONE) {
+            if (type == Type.BUTTON && (layerAction != LayerAction.NONE || expandAction != ExpandAction.NONE)) {
                 currentPointerId = -1;
             }
             else {
@@ -903,10 +1053,20 @@ public class ControlElement {
             }
         }
 
-        if (type == Type.BUTTON && layerAction == LayerAction.NONE && toggleSwitch && selected) {
-            inputControlsView.handleInputEvent(getBindingAt(0), false);
+        if (type == Type.BUTTON && layerAction == LayerAction.NONE && expandAction == ExpandAction.NONE && toggleSwitch && selected) {
+            releaseButtonBindings();
             selected = false;
             inputControlsView.invalidate();
         }
+    }
+
+    private void pressButtonBindings() {
+        for (int i = 1; i < Math.min(4, bindings.length); i++) if (bindings[i] != Binding.NONE) inputControlsView.handleInputEvent(bindings[i], true);
+        inputControlsView.handleInputEvent(getBindingAt(0), true);
+    }
+
+    private void releaseButtonBindings() {
+        inputControlsView.handleInputEvent(getBindingAt(0), false);
+        for (int i = Math.min(3, bindings.length-1); i >= 1; i--) if (bindings[i] != Binding.NONE) inputControlsView.handleInputEvent(bindings[i], false);
     }
 }

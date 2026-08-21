@@ -88,6 +88,37 @@
             android:min="50"
             android:max="150" />
 
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/touch_hitbox_scale" />
+        <SeekBar android:id="@+id/SBHitboxScale" android:layout_width="match_parent" android:layout_height="wrap_content" android:min="100" android:max="300" />
+
+        <CheckBox android:id="@+id/CBEditorLocked" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/lock_position" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/expandable_group" />
+        <Spinner style="@style/ComboBox" android:id="@+id/SExpandGroup" android:layout_width="match_parent" />
+
+        <LinearLayout android:id="@+id/LLExpandAction" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/expandable_action" />
+            <Spinner style="@style/ComboBox" android:id="@+id/SExpandAction" android:layout_width="match_parent" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/LLStickOptions" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/stick_mode" />
+            <Spinner style="@style/ComboBox" android:id="@+id/SStickMode" android:layout_width="match_parent" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/dead_zone" />
+            <SeekBar android:id="@+id/SBDeadZone" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="90" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/LLMouseOptions" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/mouse_area_mode" />
+            <Spinner style="@style/ComboBox" android:id="@+id/SMouseMode" android:layout_width="match_parent" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/mouse_sensitivity" />
+            <SeekBar android:id="@+id/SBMouseSensitivity" android:layout_width="match_parent" android:layout_height="wrap_content" android:min="10" android:max="500" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/width" />
+            <SeekBar android:id="@+id/SBMouseWidth" android:layout_width="match_parent" android:layout_height="wrap_content" android:min="25" android:max="400" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/height" />
+            <SeekBar android:id="@+id/SBMouseHeight" android:layout_width="match_parent" android:layout_height="wrap_content" android:min="25" android:max="400" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/LLRangeOptions"
             android:layout_width="match_parent"

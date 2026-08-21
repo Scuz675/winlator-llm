@@ -78,6 +78,14 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
             removeEditorBackground();
             return true;
         });
+        container.findViewById(R.id.BTAddElement).setOnLongClickListener(v -> {
+            if (!inputControlsView.duplicateSelectedElement()) AppUtils.showToast(this, R.string.no_control_element_selected);
+            return true;
+        });
+        container.findViewById(R.id.BTElementSettings).setOnLongClickListener(v -> {
+            inputControlsView.setShowHitboxes(!inputControlsView.isShowHitboxes());
+            return true;
+        });
     }
 
     @Override
@@ -236,16 +244,22 @@ public void onClick(View v) {
             view.findViewById(R.id.LLCustomTextIcon).setVisibility(View.GONE);
             view.findViewById(R.id.LLRangeOptions).setVisibility(View.GONE);
             view.findViewById(R.id.LLLayerAction).setVisibility(View.GONE);
+            view.findViewById(R.id.LLExpandAction).setVisibility(View.GONE);
+            view.findViewById(R.id.LLStickOptions).setVisibility(View.GONE);
+            view.findViewById(R.id.LLMouseOptions).setVisibility(View.GONE);
 
             if (type == ControlElement.Type.BUTTON) {
                 view.findViewById(R.id.LLShape).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.CBToggleSwitch).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.LLCustomTextIcon).setVisibility(View.VISIBLE);
                 view.findViewById(R.id.LLLayerAction).setVisibility(View.VISIBLE);
+                view.findViewById(R.id.LLExpandAction).setVisibility(View.VISIBLE);
             }
             else if (type == ControlElement.Type.RANGE_BUTTON) {
                 view.findViewById(R.id.LLRangeOptions).setVisibility(View.VISIBLE);
             }
+            else if (type == ControlElement.Type.STICK) view.findViewById(R.id.LLStickOptions).setVisibility(View.VISIBLE);
+            else if (type == ControlElement.Type.MOUSE_AREA) view.findViewById(R.id.LLMouseOptions).setVisibility(View.VISIBLE);
 
             loadBindingSpinners(element, view);
         };
@@ -255,6 +269,19 @@ public void onClick(View v) {
         loadRangeSpinner(element, view.findViewById(R.id.SRange));
         loadControlLayerSpinner(element, view.findViewById(R.id.SControlLayer));
         loadLayerActionSpinner(element, view.findViewById(R.id.SLayerAction));
+        loadSimpleSpinner(view.findViewById(R.id.SStickMode), new String[]{"Fixed", "Floating", "Follow Thumb"}, element.getStickMode().ordinal(), p -> element.setStickMode(ControlElement.StickMode.values()[p]));
+        loadSimpleSpinner(view.findViewById(R.id.SMouseMode), new String[]{"Relative Mouse", "Camera Look", "Direct Touch"}, element.getMouseMode().ordinal(), p -> element.setMouseMode(ControlElement.MouseMode.values()[p]));
+        loadSimpleSpinner(view.findViewById(R.id.SExpandGroup), new String[]{"None", "Group 1", "Group 2", "Group 3", "Group 4"}, element.getExpandGroup(), element::setExpandGroup);
+        loadSimpleSpinner(view.findViewById(R.id.SExpandAction), new String[]{"None", "Toggle Group 1", "Toggle Group 2", "Toggle Group 3", "Toggle Group 4"}, element.getExpandAction().ordinal(), p -> element.setExpandAction(ControlElement.ExpandAction.values()[p]));
+
+        setupSeekBar(view.findViewById(R.id.SBHitboxScale), Math.round(element.getHitboxScale()*100), p -> element.setHitboxScale(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBDeadZone), Math.round(element.getStickDeadZone()*100), p -> element.setStickDeadZone(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBMouseSensitivity), Math.round(element.getMouseSensitivity()*100), p -> element.setMouseSensitivity(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBMouseWidth), Math.round(element.getMouseAreaWidth()*100), p -> element.setMouseAreaWidth(p/100f));
+        setupSeekBar(view.findViewById(R.id.SBMouseHeight), Math.round(element.getMouseAreaHeight()*100), p -> element.setMouseAreaHeight(p/100f));
+        CheckBox cbLocked = view.findViewById(R.id.CBEditorLocked);
+        cbLocked.setChecked(element.isEditorLocked());
+        cbLocked.setOnCheckedChangeListener((button, checked) -> { element.setEditorLocked(checked); profile.save(); });
 
         RadioGroup rgOrientation = view.findViewById(R.id.RGOrientation);
         rgOrientation.check(element.getOrientation() == 1 ? R.id.RBVertical : R.id.RBHorizontal);
@@ -328,6 +355,30 @@ public void onClick(View v) {
         });
     }
 
+    private interface SelectionSetter { void set(int position); }
+
+    private void loadSimpleSpinner(Spinner spinner, String[] labels, int selection, SelectionSetter setter) {
+        spinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, labels));
+        spinner.setSelection(selection, false);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                setter.set(position); profile.save(); inputControlsView.invalidate();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void setupSeekBar(SeekBar seekBar, int progress, SelectionSetter setter) {
+        seekBar.setProgress(progress);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (fromUser) { setter.set(value); profile.save(); inputControlsView.invalidate(); }
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+    }
+
     private void loadControlLayerSpinner(final ControlElement element, Spinner spinner) {
         String[] labels = {
             getString(R.string.controls_always_visible),
@@ -378,10 +429,13 @@ public void onClick(View v) {
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                element.setType(ControlElement.Type.values()[position]);
-                profile.save();
-                callback.run();
-                inputControlsView.invalidate();
+                ControlElement.Type type = ControlElement.Type.values()[position];
+                if (type != element.getType()) {
+                    element.setType(type);
+                    profile.save();
+                    callback.run();
+                    inputControlsView.invalidate();
+                }
             }
 
             @Override
@@ -412,6 +466,9 @@ public void onClick(View v) {
         ControlElement.Type type = element.getType();
         if (type == ControlElement.Type.BUTTON) {
             loadBindingSpinner(element, container, 0, R.string.binding);
+            loadBindingSpinner(element, container, 1, R.string.combo_binding_1);
+            loadBindingSpinner(element, container, 2, R.string.combo_binding_2);
+            loadBindingSpinner(element, container, 3, R.string.combo_binding_3);
         }
         else if (type == ControlElement.Type.D_PAD || type == ControlElement.Type.STICK || type == ControlElement.Type.TRACKPAD) {
             loadBindingSpinner(element, container, 0, R.string.binding_up);

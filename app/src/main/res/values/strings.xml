@@ -248,4 +248,15 @@
     <string name="wine_debug_channel">Wine Debug Channel</string>
     <string name="save">Save</string>
 <string name="controls_saved">Controls saved</string>
+    <string name="touch_hitbox_scale">Touch hitbox scale</string>
+    <string name="lock_position">Lock position in editor</string>
+    <string name="expandable_group">Expandable group</string>
+    <string name="expandable_action">Expandable group action</string>
+    <string name="stick_mode">Stick mode</string>
+    <string name="dead_zone">Dead zone</string>
+    <string name="mouse_area_mode">Mouse area mode</string>
+    <string name="mouse_sensitivity">Mouse sensitivity</string>
+    <string name="combo_binding_1">Combo binding 1</string>
+    <string name="combo_binding_2">Combo binding 2</string>
+    <string name="combo_binding_3">Combo binding 3</string>
 </resources>
